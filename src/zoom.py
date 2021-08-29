@@ -23,7 +23,7 @@ def find_image(image: str) -> tuple[bool, pyscreeze.Point]:
     """
     image: str = str(IMG_DIR.joinpath(image))
     try:
-        position = pyautogui.locateCenterOnScreen(image)
+        position = pyautogui.locateCenterOnScreen(image, confidence=0.8)
         if not position:
             return False, pyscreeze.Point(0, 0)
         return True, position
