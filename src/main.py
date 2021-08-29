@@ -54,8 +54,8 @@ def str_to_datetime(str_time: str) -> datetime:
 
 def main() -> None:
     start_meeting()
-    meeting_time_end = str_to_datetime(meeting_time_end)
-    while datetime.now() < meeting_time_end:
+    time_end = str_to_datetime(meeting_time_end)
+    while datetime.now() < time_end:
         if status_meeting() is False:
             start_meeting()
         time.sleep(60)
