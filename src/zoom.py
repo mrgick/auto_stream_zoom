@@ -3,10 +3,15 @@
 """
 from config import Config
 from images import IMG_DIR, Buttons, Fields
-from utils import logger
+from db import find_one_nearly_meeting
+from utils import logger, now
 import pyautogui
 import time
 import pyscreeze
+import time
+import subprocess
+import os
+import signal
 
 
 def write(msg: str, sleep_seconds: int = 1) -> bool:
@@ -73,11 +78,10 @@ def join_meeting(meeting_id: str, meeting_pass: str = "") -> bool:
         write(meeting_pass)
         click_on_image(Buttons.JOIN)
 
-    connected: bool = False
-    while not connected:
+    for x in range(0, 10):
         if click_on_image(Buttons.JOIN_WITH_COMPUTER_AUDIO):
-            connected = True
-        time.sleep(5)
+            break
+        time.sleep(10)
 
     pyautogui.hotkey(*Config.MUTE_KEYS)
     pyautogui.hotkey(*Config.FULLSCREEN_KEYS)
@@ -91,3 +95,62 @@ def status_meeting() -> bool:
     """
     return (find_image(Buttons.STATUS_1)[0]
             or find_image(Buttons.STATUS_2)[0])
+
+
+def start_meeting(meet_id, meet_pass):
+    """
+        Starting meeting.
+    """
+    def run_process(command: str, sleep_seconds: int = 10):
+        """
+            Start program throw command
+        """
+        process = subprocess.Popen(command, shell=True)
+        time.sleep(sleep_seconds)
+
+    def kill_process(name: str) -> bool:
+        """
+            Kill process by name.
+        """
+        try:
+            self_pid: int = os.getpid()
+            for line in os.popen("ps ax | grep " + name + " | grep -v grep"):
+                pid: int = int(line.split()[0])
+                if pid != self_pid:
+                    os.kill(pid, signal.SIGKILL)
+            logger.info("Killed process with name " + name)
+            return True
+        except Exception as e:
+            logger.error("Trying killed " + name + "\n" + str(e))
+            return False
+
+    kill_process("zoom")
+    run_process(Config.OPEN_ZOOM)
+    join_meeting(meet_id, meet_pass)
+
+
+def start_zoom() -> None:
+    while True:
+        meeting = None
+        try:
+            if meeting is None:
+                meeting = find_one_nearly_meeting()
+            if meeting["status"] is True:
+                meet = meeting["query"]
+                logger.info("Waiting meeting" + str(meet))
+                while now() <= meet[0]:
+                    time.sleep(10)
+                logger.info("Starting meeting" + str(meet))
+                pyautogui.hotkey(*Config.START_CAPTURE_KEYS)
+                while now() < meet[1]:
+                    if status_meeting() is False:
+                        start_meeting(meet[2], meet[3])
+                    time.sleep(60)
+                logger.info("Ending meeting" + str(meet))
+                pyautogui.hotkey(*Config.STOP_CAPTURE_KEYS)
+                meeting = None
+            else:
+                time.sleep(10)
+        except Exception as e:
+            logger.error(e)
+    pyautogui.hotkey(*Config.START_CAPTURE_KEYS)
